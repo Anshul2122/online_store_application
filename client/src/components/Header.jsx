@@ -13,9 +13,11 @@ import { LayoutDashboard, Store } from "lucide-react";
 const user = {
   name: "John Doe",
   email: "johndoe@example.com",
-  role: "admin",
+  role: "user",
   login: true,
 };
+
+const itemInCart = 4;
 
 const Header = () => {
     const navigate = useNavigate();
@@ -43,7 +45,10 @@ const Header = () => {
         </span>
         <div className="flex gap-5 items-center ">
           {user.role === "Customer" && (
-            <Link to={"/auth/seller-register"} className="flex gap-2 items-center">
+            <Link
+              to={"/auth/seller-register"}
+              className="flex gap-2 items-center"
+            >
               <Store />
               Become a Seller
             </Link>
@@ -60,12 +65,19 @@ const Header = () => {
               dashboard
             </Link>
           )}
-          <Link to={"/cart"}>
-            <Button>
-              {" "}
-              <FaShoppingBag />
-            </Button>
-          </Link>
+          {user.role !== "admin" && (
+            <Link to={"/cart"}>
+              <Button>
+                {" "}
+                <FaShoppingBag />
+              </Button>
+              {itemInCart > 0 && (
+                <span className="absolute top-[1px] right-[80px] bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {itemInCart}
+                </span>
+              )}
+            </Link>
+          )}
 
           {user.login ? (
             <>

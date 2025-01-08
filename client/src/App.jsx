@@ -21,6 +21,7 @@ const Product = lazy(() => import('./pages/Product'));
 const SellerRegister = lazy(() => import('./pages/auth/sellerRegister'));
 const SellerHome = lazy(() => import("./pages/Seller-home"));   
 const CreateCoupon = lazy(() => import("./pages/admin/CreateCoupon"));
+const Cart = lazy(() => import("./pages/Cart"));
 
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
             <Route path="/admin/add-coupon" element={<CreateCoupon/>} />
             <Route path="/" element={<Home />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/cart" element={<Cart />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/:id" element={<OrderDetails />} />
             <Route path="/product/:id" element={<Product />} />

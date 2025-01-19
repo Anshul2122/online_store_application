@@ -1,32 +1,81 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
+import { useDispatch } from "react-redux";
+import { setLoading, setUser } from "@/redux/slices/authSlice";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { api_key, USER_API } from "@/utils/api-routes/contant";
+import { Loader2 } from "lucide-react";
 
-const ManageAddresses = () => {
+const ManageAddresses = ({user, isLoading}) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    name: "",
-    mobile: "",
-    pincode: "",
-    locality: "",
-    address: "",
-    city: "",
-    state: "",
-    landmark: "",
-    alternatePhone: "",
+    zip: user?.address?.zip || "",
+    street: user?.address?.street || "",
+    city: user?.address?.city || "",
+    state: user?.address?.state || "",
+    landmark: user?.address?.landmark || "",
+    alternatePhone: user?.address?.alternatePhone || "",
+    locality: user?.address?.locality || "",
   });
 
+  console.log("formData", formData);
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({...formData, [name]:value });
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("form Data: ", formData);
-    
-  }
+    try {
+      const payload = {
+        address: {
+          zip: formData.zip,
+          street: formData.street,
+          city: formData.city,
+          state: formData.state,
+          locality: formData.locality,
+          landmark: formData.landmark,
+          alternatePhone: formData.alternatePhone,
+        },
+      };
+      console.log(payload);
+      
+      dispatch(setLoading(true));
+      const res = await axios.put(`${api_key}/${USER_API}/me`, payload, {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      });
+      console.log(res.data);
+      
+      if (res.data.success) {
+        toast.success("Profile updated successfully!");
+        dispatch(setUser(res.data.user));
+        navigate("/profile");
+      }
+    } catch (error) {
+      console.error(
+        "Error updating profile:",
+        error.response?.data || error.message
+      );
+      toast.error(error.response?.data?.message || "Failed to update profile.");
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      // console.log(user);
+      navigate("/profile");
+    }
+  }, [user]);
   return (
     <div>
       <form
@@ -36,12 +85,13 @@ const ManageAddresses = () => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="block text-sm font-medium text-gray-700">
-              Name
+              first Name
             </Label>
             <Input
               type="text"
-              name="name"
-              value={formData.name}
+              name="firstName"
+              value={user.firstName}
+              disabled={true}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter your name"
@@ -54,7 +104,8 @@ const ManageAddresses = () => {
             <Input
               type="text"
               name="mobile"
-              value={formData.mobile}
+              value={user.phoneNumber}
+              disabled={true}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter your mobile number"
@@ -62,15 +113,44 @@ const ManageAddresses = () => {
           </div>
           <div>
             <Label className="block text-sm font-medium text-gray-700">
+              Last Name
+            </Label>
+            <Input
+              type="text"
+              name="lastName"
+              value={user.lastName}
+              onChange={handleChange}
+              disabled={true}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your name"
+            />
+          </div>
+
+          <div>
+            <Label className="block text-sm font-medium text-gray-700">
               Pincode
             </Label>
             <Input
               type="text"
-              name="pincode"
-              value={formData.pincode}
+              name="zip"
+              value={formData.zip}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter pincode"
+            />
+          </div>
+
+          <div>
+            <Label className="block text-sm font-medium text-gray-700">
+              Street
+            </Label>
+            <Input
+              type="text"
+              name="street"
+              value={formData.street}
+              onChange={handleChange}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter locality"
             />
           </div>
           <div>
@@ -80,22 +160,10 @@ const ManageAddresses = () => {
             <Input
               type="text"
               name="locality"
-              value={formData.name}
+              value={formData.locality}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter locality"
-            />
-          </div>
-          <div>
-            <Label className="block text-sm font-medium text-gray-700">
-              Address (Area and Street)
-            </Label>
-            <Textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter full address"
             />
           </div>
           <div>
@@ -151,15 +219,19 @@ const ManageAddresses = () => {
             />
           </div>
         </div>
-        <Button
-          type="submit"
-          className=" text-white px-6 py-2 rounded-md shadow-sm my-4"
-        >
-          Save
-        </Button>
+        {isLoading ? (
+          <Button>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin mt-4" />
+            loading...
+          </Button>
+        ) : (
+          <Button type="submit" className="mt-4">
+            save
+          </Button>
+        )}
       </form>
     </div>
   );
-}
+};
 
-export default ManageAddresses
+export default ManageAddresses;

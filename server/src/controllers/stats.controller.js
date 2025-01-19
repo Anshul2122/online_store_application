@@ -7,17 +7,23 @@ const sellerStats = TryCatch(async (req, res) => {
   const sellerId = req.user._id;
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  console.log(firstDayOfMonth);
+  
 
   // Get all products for the seller
   const products = await Product.find({ sellerId });
   const lastMonthProducts = products.filter(
     (p) => p.createdAt < firstDayOfMonth
   );
+  const thisMonthProducts = products.filter((p) => {
+    return p.createdAt >= firstDayOfMonth;
+  });
 
   // Calculate product stats
   const productStats = {
     totalProducts: products.length,
     lastMonthProducts: lastMonthProducts.length,
+    thisMonthProducts: thisMonthProducts.length,
     percentageChange:
       lastMonthProducts.length === 0
         ? 0
@@ -47,7 +53,7 @@ const sellerStats = TryCatch(async (req, res) => {
   const orderStats = {
     totalOrders: soldOrders.length,
     lastMonthOrders: lastMonthOrders.length,
-    totalRevenue: totalRevenue,
+    totalRevenue: totalRevenue.toFixed(2),
     orderPercentageChange:
       lastMonthOrders.length === 0
         ? 0
@@ -72,16 +78,15 @@ const sellerStats = TryCatch(async (req, res) => {
 
   // Calculate monthly stats
   const monthlyStats = [];
-  const monthlyProducts = [];
 
   // Last 12 months
   for (let i = 0; i < 12; i++) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1); // Start of the month
+    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1); // Start of the next month
 
     // Monthly revenue
     const monthOrders = soldOrders.filter((o) => {
-      const orderDate = new Date(o.createdAt);
+      const orderDate = new Date(o.createdAt); // Ensure `createdAt` field exists
       return orderDate >= date && orderDate < nextMonth;
     });
 
@@ -95,23 +100,14 @@ const sellerStats = TryCatch(async (req, res) => {
 
     monthlyStats.push({
       _id: { year: date.getFullYear(), month: date.getMonth() + 1 },
-      revenue: monthRevenue,
-    });
-
-    // Monthly products
-    const monthProducts = products.filter((p) => {
-      const productDate = new Date(p.createdAt);
-      return productDate >= date && productDate < nextMonth;
-    });
-
-    monthlyProducts.push({
-      _id: { year: date.getFullYear(), month: date.getMonth() + 1 },
-      productsAdded: monthProducts.length,
+      revenue: monthRevenue.toFixed(2),
     });
   }
 
   // Get low stock products
-  const lowStockProducts = await Product.find({ sellerId, stock: { $lt: 10 } }).select("name stock sellingPrice images").sort("stock");
+  const lowStockProducts = await Product.find({sellerId})
+    .select("name stock sellingPrice images")
+    .sort("stock");
 
   return res.status(200).json({
     success: true,
@@ -119,11 +115,9 @@ const sellerStats = TryCatch(async (req, res) => {
     orders: orderStats,
     rating: { averageRating },
     monthlyStats,
-    monthlyProducts,
     lowStockProducts,
   });
 });
-
 
 const adminStats = TryCatch(async (req, res) => {
   const now = new Date();

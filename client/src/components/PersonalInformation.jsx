@@ -1,30 +1,62 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import axios from "axios";
+import { api_key, USER_API } from "./../utils/api-routes/contant";
+import { setLoading, setUser } from "@/redux/slices/authSlice";
+import { Loader2 } from "lucide-react";
 
-export default function ProfileInformation() {
+
+
+export default function ProfileInformation({ user, isLoading }) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    firstName: "anshul",
-    lastName: "makhija",
-    gender: "male",
-    email: "anshul@anshul.",
-    mobile: "8189298999",
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    gender: user.gender || "",
+    email: user.email || "",
+    mobile: user.phoneNumber || "",
   });
-
-
-  console.log("form Data: ", formData);
-  
   const [editDetails, setEditDetails] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted with data: ", formData);
+    try {
+      dispatch(setLoading(true));
+      const res = await axios.put(`${api_key}/${USER_API}/me`, formData, {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      });
+
+      if (res.data.success) {
+        toast.success("Profile updated successfully!");
+        dispatch(setUser(res.data.user));
+        navigate("/profile");
+      }
+    } catch (error) {
+      console.error(
+        "Error updating profile:",
+        error.response?.data || error.message
+      );
+      toast.error(error.response?.data?.message || "Failed to update profile.");
+    } finally {
+      dispatch(setLoading(false));
+    }
     setEditDetails(false);
   };
 
-
-  
+  useEffect(() => {
+    if (user) {
+      // console.log(user);
+      navigate("/profile");
+    }
+  }, [user]);
 
   return (
     <>
@@ -70,10 +102,10 @@ export default function ProfileInformation() {
               <Input
                 type="radio"
                 name="gender"
-                value="male"
+                value="Male"
                 className="mr-2"
                 disabled={!editDetails}
-                checked={formData.gender === "male"}
+                checked={formData.gender === "Male"}
                 onChange={(e) =>
                   setFormData({ ...formData, gender: e.target.value })
                 }
@@ -84,10 +116,10 @@ export default function ProfileInformation() {
               <Input
                 type="radio"
                 name="gender"
-                value="female"
+                value="Female"
                 className="mr-2"
                 disabled={!editDetails}
-                checked={formData.gender === "female"}
+                checked={formData.gender === "Female"}
                 onChange={(e) =>
                   setFormData({ ...formData, gender: e.target.value })
                 }
@@ -123,13 +155,22 @@ export default function ProfileInformation() {
           </div>
         </div>
         {editDetails && (
-          <Button
-            type="submit"
-            onClick={handleSubmit}
-            className=" text-white px-6 py-2 rounded-md shadow-sm my-4"
-          >
-            Save
-          </Button>
+          <>
+            {isLoading ? (
+              <Button>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                loading...
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                className="bg-black hover:bg-gray-800"
+                onClick={handleSubmit}
+              >
+                save
+              </Button>
+            )}
+          </>
         )}
       </form>
     </>

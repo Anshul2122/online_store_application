@@ -5,11 +5,15 @@ import { MenuItems, SubMenuItems } from "@/components/MenuItems";
 import MyOrders from "@/components/MyOrders";
 import MyWishList from "@/components/MyWishList";
 import ProfileInformation from "@/components/PersonalInformation";
+import SellerOrder from "@/components/seller/SellerOrder";
 import { Folder, Package, Power, Settings, User } from "lucide-react";
 import { useState } from "react";
+import { useSelector } from "react-redux";
 
 
 const Profile = () => {
+
+  const { isLoading, user } = useSelector(store => store.auth);
     const expaned = true;
     const [activeSubMenu, setActiveSubMenu] = useState("profile");
     const handleSubMenuClick = (subMenu) => {
@@ -47,16 +51,16 @@ const Profile = () => {
           )}
           <MenuItems text="MY STUFF" icon={Folder} />
           <>
-            <SubMenuItems
-              active={activeSubMenu === "notification"}
-              text="All Notification"
-              onClick={() => handleSubMenuClick("notification")}
-            />
-            <SubMenuItems
+            {user.role === 'seller' && <SubMenuItems
+              active={activeSubMenu === "Sold Orders"}
+              text="My Sold Orders"
+              onClick={() => handleSubMenuClick("Sold Orders")}
+            />}
+            {user.role === 'admin' && <SubMenuItems
               active={activeSubMenu === "coupons"}
               text="My Coupon"
               onClick={() => handleSubMenuClick("coupons")}
-            />
+            />}
             <SubMenuItems
               active={activeSubMenu === "wishlist"}
               text="My Wishlist"
@@ -71,13 +75,21 @@ const Profile = () => {
         />
       </aside>
       <div className="md:col-span-2 bg-white rounded-lg shadow-sm p-6 w-full ">
-        {activeSubMenu === "MyOrder" && <MyOrders heading={'My Orders'} />}
-        {activeSubMenu === "profile" && <ProfileInformation />}
-        {activeSubMenu === "addresses" && <ManageAddresses />}
-        {activeSubMenu === "coupons" && <Coupons />}
-
-        {activeSubMenu === "notification" && <AllNotifications />}
-        {activeSubMenu === "wishlist" && <MyWishList />}
+        {activeSubMenu === "MyOrder" && (
+          <MyOrders heading={"My Orders"} user={user} loading={isLoading} />
+        )}
+        {activeSubMenu === "profile" && (
+          <ProfileInformation user={user} loading={isLoading} />
+        )}
+        {activeSubMenu === "addresses" && (
+          <ManageAddresses user={user} loading={isLoading} />
+        )}
+        {activeSubMenu === "wishlist" && (
+          <MyWishList user={user} loading={isLoading} />
+        )}
+        {activeSubMenu === "Sold Orders" && (
+          <SellerOrder user={user} loading={isLoading} />
+        )}
       </div>
     </div>
   );

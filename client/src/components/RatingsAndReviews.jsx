@@ -1,3 +1,4 @@
+import { useSelector } from "react-redux";
 
 const reviewsData = {
   overallRating: 4.2,
@@ -33,26 +34,21 @@ const reviewsData = {
   additionalImages: 612,
 };
 
-const RatingsAndReviews = () => {
+const RatingsAndReviews = ({product}) => {
   const {
-    overallRating,
     totalRatings,
-    totalReviews,
     ratingBreakdown,
     metrics,
-    review,
-    additionalImages,
   } = reviewsData;
 
   return (
-    <div className=" w-1/2 p-6 border border-gray-200 rounded-lg shadow-sm bg-white">
+    <div className=" p-6 border border-gray-200 rounded-lg shadow-sm bg-white w-full">
       {/* Overall Rating and Reviews */}
       <div className="flex justify-between items-start mb-6 ">
         <div>
-          <h2 className="text-4xl font-semibold">{overallRating}★</h2>
+          <h2 className="text-4xl font-semibold">{product.averageRating}★</h2>
           <p className="text-gray-600">
-            {totalRatings.toLocaleString()} Ratings &{" "}
-            {totalReviews.toLocaleString()} Reviews
+            {product.reviews.length.toLocaleString()} Ratings & Reviews
           </p>
         </div>
         <button className="px-4 py-2 bg-gray-400 hover:bg-gray-200 rounded-md">
@@ -79,7 +75,7 @@ const RatingsAndReviews = () => {
       </div>
 
       {/* Metrics Section */}
-      <div className="flex justify-between mb-6">
+      <div className="flex justify-between mb-6 ">
         {metrics.map((metric) => (
           <div key={metric.name} className="text-center">
             <div className="relative w-12 h-12 mx-auto mb-2">
@@ -104,52 +100,14 @@ const RatingsAndReviews = () => {
                   strokeLinecap="round"
                 />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center font-semibold text-sm">
-                {metric.value.toFixed(1)}
-              </div>
             </div>
-            <p className="text-sm text-gray-600">{metric.name}</p>
           </div>
         ))}
       </div>
 
       {/* Review Images */}
-      <div className="flex items-center gap-2 overflow-x-auto">
-        {review.slice(0, 6).map((reviewItem, index) => (
-          <div key={index}>
-            {reviewItem.image /* Only render the image if it exists */ && (
-              <img
-                src={reviewItem.image}
-                alt={`Review ${index}`}
-                className="w-16 h-16 rounded-md object-cover"
-              />
-            )}
-            {/* Displaying the rating */}
-          </div>
-        ))}
-        {additionalImages > 0 && (
-          <div className="w-16 h-16 flex items-center justify-center bg-gray-400 rounded-md">
-            +{additionalImages}
-          </div>
-        )}
-      </div>
-      {review.slice(0, 6).map((reviewItem, index) => (
-        <div key={index} className="my-2 border-b-2 p-1">
-          <section className="flex gap-2 justify-between">
-            <section className="flex gap-3">
-              <p className="bg-green-500 text-white w-fit rounded-sm">
-                {reviewItem.rating} ★
-              </p>
-              <p>{reviewItem.comment}</p>
-            </section>
-            <span className="flex justify-end text-gray-500 text-sm font-semibold mt-1">
-              {" "}
-              {reviewItem.user}
-            </span>
-          </section>
-          {/* Displaying the rating */}
-        </div>
-      ))}
+
+      
     </div>
   );
 };

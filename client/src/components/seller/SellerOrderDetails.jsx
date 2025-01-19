@@ -2,18 +2,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
+import axios from "axios";
+import { api_key, ORDER_API } from "@/utils/api-routes/contant";
+import { setCurrOrder, setOrders } from "@/redux/slices/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import toast from "react-hot-toast";
 
-const Order = {
-  id: "1",
-  img: "https://images.pexels.com/photos/205421/pexels-photo-205421.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-  desc: "fdadffnkjdnfkjndkfjkdnfkanfkanfkljnakjfnakjf",
-  price: 7117,
-  status: "Shipped",
-};
 
-const SellerOrderDetails = () => {
+const SellerOrderDetails = ({ order }) => {
+  const dispatch = useDispatch();
+  const { isLoading } = useSelector(store => store.auth);
+  const id = order._id;
   const navigate = useNavigate();
-  const [status, setStatus] = useState("Order Confirmed");
+  const [status, setStatus] = useState(order.status);
   const [isSaving, setIsSaving] = useState(false); // To manage save button state
 
   // Define the order steps
@@ -25,56 +26,39 @@ const SellerOrderDetails = () => {
   ];
 
   useEffect(() => {
-    setStatus(Order.status);
-  }, [Order.status]);
+    setStatus(order.status);
+  }, [order.status]);
 
   const handleStatusChange = (e) => {
     setStatus(e.target.value);
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-
+    console.log("hehe", status);
     try {
-      // Simulate an API call to save the updated status
-      // Replace this with your actual API call logic
-      console.log(`Saving status "${status}" for Order ID: ${Order.id}`);
-      // await axios.put(`/api/orders/${Order.id}`, { status });
-
-      // Simulate a delay for API call
-      setTimeout(() => {
-        console.log("Status saved successfully!");
-        setIsSaving(false);
-      }, 1000);
+      const res = await axios.put(
+        `${api_key}/${ORDER_API}/order/${id}`,
+        status,
+        {
+          withCredentials: true,
+        }
+      );
+      if (res.data.success) {
+        console.log(res.data);
+        dispatch(setCurrOrder(res.data.orders));
+        toast.success("order status updated");
+      }
     } catch (error) {
-      console.error("Error saving order status:", error);
-      setIsSaving(false);
+      console.log(error);
+      toast.error("Failed to update order status");
     }
   };
+  
 
   const currentStepIndex = orderSteps.indexOf(status);
 
   return (
     <div className="p-4 border rounded-md shadow-lg bg-white mt-4">
-      {/* Product Details */}
-      <div className="flex items-center gap-4">
-        <img
-          src={Order.img}
-          className="w-20 h-20 object-cover cursor-pointer"
-          onClick={() => navigate(`/product/${Order.id}`)}
-          alt="Product"
-        />
-        <div>
-          <h3
-            className="font-medium cursor-pointer hover:text-gray-800 hover:underline"
-            onClick={() => navigate(`/product/${Order.id}`)}
-          >
-            {Order.desc}
-          </h3>
-          <p>Seller: QUALITYWALE</p>
-          <p className="font-bold text-lg">₹ {Order.price}</p>
-        </div>
-      </div>
 
       {/* Order Progress */}
       <div className="mt-4">

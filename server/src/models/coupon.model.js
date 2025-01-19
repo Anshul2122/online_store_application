@@ -8,7 +8,7 @@ const CouponSchema = new mongoose.Schema(
       unique: true,
       uppercase: true,
     },
-    discountPercent: {
+    discount: {
       type: Number,
       required: true,
       min: 1,
@@ -19,12 +19,12 @@ const CouponSchema = new mongoose.Schema(
       enum: ["active", "expired"],
       default: "active",
     },
-    validFrom: {
+    startDate: {
       type: Date,
       required: true,
       default: Date.now,
     },
-    validUntil: {
+    endDate: {
       type: Date,
       required: true,
     },

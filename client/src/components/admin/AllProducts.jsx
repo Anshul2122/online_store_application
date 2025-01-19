@@ -1,91 +1,112 @@
+import { setLoading } from "@/redux/slices/authSlice";
+import { setAllProducts } from "@/redux/slices/productSlice";
+import { api_key, PRODUCT_API } from "@/utils/api-routes/contant";
+import axios from "axios";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-const allProducts = [
-  {
-    _id: "1",
-    name: "Wireless Headphones",
-    price: 99.99,
-    originalPrice: 199.99,
-    percentOff: 79,
-    image:
-      "https://images.pexels.com/photos/8038334/pexels-photo-8038334.jpeg?auto=compress&cs=tinysrgb&w=600",
-  },
-  {
-    _id: "2",
-    name: "Smartwatch",
-    price: 149.99,
-    percentOff: 79,
-    originalPrice: 199.99,
-    image:
-      "https://images.pexels.com/photos/1334602/pexels-photo-1334602.jpeg?auto=compress&cs=tinysrgb&w=600",
-  },
-  {
-    _id: "3",
-    name: "Gaming Laptop",
-    price: 1299.99,
-    percentOff: 79,
-    originalPrice: 2999.99,
-    image:
-      "https://images.pexels.com/photos/19012051/pexels-photo-19012051/free-photo-of-modern-gaming-laptop-and-headphones-on-a-desk.jpeg?auto=compress&cs=tinysrgb&w=600",
-  },
-  {
-    _id: "4",
-    name: "T-shirt",
-    price: 49.99,
-    percentOff: 79,
-    originalPrice: 99.99,
-    image:
-      "https://images.pexels.com/photos/220139/pexels-photo-220139.jpeg?auto=compress&cs=tinysrgb&w=600",
-  },
-  {
-    _id: "5",
-    name: "Bluetooth Speaker",
-    price: 59.99,
-    percentOff: 79,
-    originalPrice: 99.99,
-    image:
-      "https://images.pexels.com/photos/1279365/pexels-photo-1279365.jpeg?auto=compress&cs=tinysrgb&w=600",
-  },
-];
 const AllProducts = () => {
-   const navigate = useNavigate();
-      
-  
-    return (
-      <section className="p-6">
-        <div className="grid grid-cols-1 sm:grid:cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {allProducts.map((product, index) => (
-            <div
-              key={index}
-              className="relative bg-white border-2 border-gray-200 rounded-lg overflow-hidden shadow-md p-6 cursor-pointer hover:shadow-2xl"
-              onClick={() => navigate(`/product/${index}`)}
-            >
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full object-cover h-64"
-              />
-              <div className="p-4">
-                <h3 className="text-xl font-medium">{product.name}</h3>
-                <div className="flex items-center mt-2">
-                  <span className="text-red-600 text-lg font-semibold">
-                    ₹{product.price}
-                  </span>
-                  <span className="text-gray-500 ml-4 line-through">
-                    ₹{product.originalPrice}
-                  </span>
-                  <span className="text-green-500 ml-2 text-sm">
-                    {product.percentOff}% off
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isLoading } = useSelector((store) => store.auth);
+  const { allProducts } = useSelector((store) => store.products);
 
-          {/* Add More Products Here */}
-        </div>
-      </section>
+  const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [categories, setCategories] = useState([
+    "Electronics",
+    "Clothing",
+    "Home Appliances",
+    "Books",
+    "Accessories",
+  ]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const percentOff = (product) => {
+    return Math.floor(
+      ((product.originalPrice - product.sellingPrice) / product.originalPrice) *
+        100
     );
+  };
+
+  const fetchFilteredProducts = async () => {
+    dispatch(setLoading(true));
+    try {
+      const res = await axios.get(`${api_key}/${PRODUCT_API}/all`, {
+        params: {
+          minPrice: priceRange[0],
+          maxPrice: priceRange[1],
+          category: selectedCategory,
+        },
+        withCredentials: true,
+      });
+
+      if (res.data.success) {
+        dispatch(setAllProducts(res.data.products));
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error("Error while fetching filtered products");
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  useEffect(() => {
+    fetchFilteredProducts();
+  }, [priceRange, selectedCategory]);
+
+  return (
+    <div >
+      <div>
+        {/* Products */}
+        <div className="lg:w-3/4">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-[60vh]">
+              <span>Loading...</span>
+            </div>
+          ) : allProducts.length === 0 ? (
+            <div className="flex justify-center items-center h-[60vh]">
+              <span>No products found.</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {allProducts.map((product, index) => (
+                <div
+                  key={index}
+                  className="relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200 p-4 cursor-pointer"
+                  onClick={() => navigate(`/product/${product._id}`)}
+                >
+                  <img
+                    src={product.images[0]}
+                    alt={product.name}
+                    className="w-full h-48 object-cover rounded-t-lg"
+                  />
+                  <div className="p-4">
+                    <h3 className="text-lg font-medium text-gray-800">
+                      {product.name}
+                    </h3>
+                    <div className="flex items-center mt-2">
+                      <span className="text-red-600 text-lg font-semibold">
+                        ₹{product.sellingPrice}
+                      </span>
+                      <span className="text-gray-500 ml-2 line-through text-sm">
+                        ₹{product.originalPrice}
+                      </span>
+                      <span className="text-green-500 ml-2 text-sm">
+                        {percentOff(product)}% off
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default AllProducts;

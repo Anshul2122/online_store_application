@@ -3,11 +3,17 @@ import User from "../models/user.model.js";
 import { ErrorHandler } from "../utils/error.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/features.js";
 import { TryCatch } from "../utils/TryCatch.js";
+import { redisClient } from "../server.js";
+
+const CACHE_KEY = {
+  USER: "user",
+  PRODUCT:"product",
+  MYPRODUCTS:"myProducts",
+}
 
 const registerSeller = TryCatch(async (req, res, next) => {
   const userId = req.user._id;
-  console.log(userId);
-
+  console.log(req.user);
   const user = await User.findById(userId);
   if (!user) {
     return next(new ErrorHandler("user not found", 404));
@@ -16,41 +22,36 @@ const registerSeller = TryCatch(async (req, res, next) => {
     return next(new ErrorHandler("You are already a seller", 400));
   }
 
-  const { sellerOrg, email, password, phoneNumber } = req.body;
+  const { storeName, email, password, phoneNumber } = req.body;
+  
   if (
     [email, password, phoneNumber, storeName].some((field) => field?.trim() === "")) {
     return next(new ErrorHandler("All fields are required!!", 400));
-  }
-
-  const flag = await User.findOne(storeName);
-  if (flag) {
-    return next(new ErrorHandler("Store name already exists", 400));
-  }
-  const isPasswordValid = await user.isPasswordCorrect(password);
-
-  if (
-    user.email !== email ||
-    !isPasswordValid ||
-    user.phoneNumber !== phoneNumber
-  ) {
+  } 
+  
+  if ( user.email !== email || !isPasswordValid || user.phoneNumber !== phoneNumber) {
     return next(new ErrorHandler("Invalid user details", 400));
   }
 
   user.role = "seller";
   user.storeName = storeName;
   user.save();
+  await redisClient.set( `${CACHE_KEY.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
 
-  return res.status(200).json({
-    success: true,
-    message: "User registered as a seller",
-    user,
-  });
+  console.log(res.status)
+    return res.status(200).json({
+      success: true,
+      message: "User registered as a seller",
+      user,
+    });
 });
 
 const addProduct = TryCatch(async (req, res, next) => {
+
   const sellerId = req.user._id;
 
-  const store = req.user.sellerOrg;
+  const storeName = req.user.storeName;
   const user = await User.findById(sellerId);
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
@@ -62,13 +63,11 @@ const addProduct = TryCatch(async (req, res, next) => {
     category,
     brand,
     stock,
-    price,
+    sellingPrice,
     originalPrice,
     colors,
     sizes,
   } = req.body;
-  if (colors) {colors = JSON.parse(colors); }
-  if (sizes) { sizes = JSON.parse(sizes); }
   const existingProduct = await Product.findOne({
     name: req.body.name,
     sellerId: req.body.sellerId,
@@ -80,7 +79,9 @@ const addProduct = TryCatch(async (req, res, next) => {
     });
   }
 
+
   const productImages = req.files;
+  
   if (!productImages || productImages.length === 0) {
     return next(new ErrorHandler("Product images are required", 400));
   }
@@ -88,6 +89,7 @@ const addProduct = TryCatch(async (req, res, next) => {
   for (let i = 0; i < productImages.length; i++) {
     const imagePath = await uploadOnCloudinary(productImages[i].path);
     images.push(imagePath.url);
+    console.log(imagePath.url)
   }
 
   const createdProduct = await Product.create({
@@ -96,17 +98,21 @@ const addProduct = TryCatch(async (req, res, next) => {
     category,
     brand,
     stock,
-    price,
+    sellingPrice,
     originalPrice,
     images,
     colors,
     sizes,
     sellerId: sellerId,
-    storeName: store,
+    storeName,
   });
 
   user.products.push(createdProduct._id);
   await user.save();
+  const productsKey = `${CACHE_KEY.PRODUCT}${user._id}`;
+  await redisClient.set(`${CACHE_KEY.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated, ProductAdded);
+  await redisClient.set(productsKey, JSON.stringify(createdProduct));
 
   res.status(200).json({
     success: true,
@@ -119,10 +125,11 @@ const addProduct = TryCatch(async (req, res, next) => {
 const updateProductData = TryCatch(async (req, res, next) => {
   const id = req.params.id;
   const product = await Product.findById(id);
+  const user = await User.findById(req.user._id)
   if (!product) {
     return next(new ErrorHandler(`Product with ${id} not found`, 404));
   }
-  if (!product.seller.equals(req.user._id)) {
+  if (product.sellerId.toString() !== req.user._id.toString()) {
     return next(
       new ErrorHandler(
         "this is are not your product, therefore you authorized to update this product",
@@ -131,27 +138,22 @@ const updateProductData = TryCatch(async (req, res, next) => {
     );
   }
 
-  let {
+  const {
     name,
     description,
     category,
     brand,
     stock,
-    price,
+    sellingPrice,
     originalPrice,
     sellerOrg,
+    colors,
+    sizes,
   } = req.body;
 
-  let { colors, sizes } = req.body;
-  if (colors) {
-    colors = JSON.parse(colors);
-    product.colors = colors;
-  }
-  if (sizes) {
-    sizes = JSON.parse(sizes);
-    product.sizes = sizes;
-  }
 
+  console.log("req.body : ", req.body);
+  console.log("req.file : ", req.files);
   if (req.files) {
     console.log("true");
     for (let i = 0; i < product.images.length; i++) {
@@ -188,17 +190,33 @@ const updateProductData = TryCatch(async (req, res, next) => {
     if (stock) {
     product.stock = stock;
   }
-  if (price) {
-    product.price = price;
+  if (sellingPrice) {
+    product.sellingPrice = sellingPrice;
   }
   if (originalPrice) {
     product.originalPrice = originalPrice;
   }
-  product.save();
+  if (colors) {
+    product.colors = colors;
+  }
+  if (sizes) {
+    product.sizes = sizes;
+  }
+
+  await product.save();
+  await user.save();
+
+  const productsKey = `${CACHE_KEY.MYPRODUCTS}${user._id}`;
+  await redisClient.set(`${CACHE_KEY.USER}${user._id}`, JSON.stringify(user));
+  await redisClient.set(productsKey, JSON.stringify(createdProduct));
+  invalidateCache(userUpdated, ProductUpdated);
+
+  
 
   return res.status(200).json({
     success: true,
     message: `Product with ${id} updated successfully`,
+    user,
     product,
   });
 });
@@ -206,8 +224,17 @@ const updateProductData = TryCatch(async (req, res, next) => {
 const deleteProduct = TryCatch(async (req, res, next) => {
   const id = req.params.id;
 
-  const product = await Product.findByIdAndDelete(id);
+  const user = await User.findById(req.user._id);
 
+  await user.save();
+  const product = await Product.findByIdAndDelete(id);
+  const productsKey = `${CACHE_KEY.MYPRODUCTS}${user._id}`;
+  await redisClient.set(`${CACHE_KEY.USER}${user._id}`, JSON.stringify(user));
+  await redisClient.del(productsKey);
+
+  
+  invalidateCache(userUpdated, ProductUpdated);
+  
   return res.status(200).json({
     success: true,
     message: `Product with ${id} deleted successfully`,
@@ -216,14 +243,26 @@ const deleteProduct = TryCatch(async (req, res, next) => {
 
 const getAllSellerProducts = TryCatch(async (req, res, next) => {
   const sellerId = req.user._id;
+  let cachedProducts;
+    const productsKey = `${CACHE_KEY.MYPRODUCTS}${sellerId}`;
+    const exists = await redisClient.exists(productsKey);
+    if(exists){
+      cachedProducts = await redisClient.get(productsKey);
+      return res.status(200).json({
+        success: true,
+        message: "Products fetched successfully",
+        products: JSON.parse(cachedProducts),
+      });
+    }
 
-  const products = await Product.find({ seller: sellerId });
+  const products = await Product.find( {sellerId: sellerId} );
   if (!products || products.length === 0) {
     return res.status(200).json({
       success: true,
       message: "No products found for this seller",
     });
   }
+  await redisClient.set(productsKey, JSON.stringify(products));
   res.status(200).json({
     success: true,
     message: "Products fetched successfully",

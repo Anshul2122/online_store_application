@@ -2,6 +2,7 @@ import fs from "fs";
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
+import { redisClient } from "../server.js";
 dotenv.config({ path: "..././.env" });
 
 const connectDB = async () => {
@@ -19,7 +20,6 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
-
 
 
 
@@ -54,4 +54,75 @@ const deleteFromCloudinary = async (cloudinaryFilePath) => {
   }
 };
 
+
+const CACHEKEYS ={
+  ALLUSER:"allUser",
+  USER:"user",
+  COUPON:"createCoupon",
+  ALLCOUPON:"allCoupon",
+
+  ORDER:"order",
+  MYORDER:"myorder",
+  ORDERBYID:"orderID",
+  ALLORDERS:"allorders",
+  ORDERBYSTATUS:"orderStatus",
+  SELLERORDERS:"sellerOrder",
+
+  PRODUCT:"product",
+  ALLPRODUCTS:"allProducts",
+  SINGLEPRODUCT:"singleProduct",
+  MYPRODUCTS:"myProducts",
+  LATESTPRODUCT:"latestProduct",
+  GETCATEGORYPRODUCT:"getCategoryProduct",
+  ALLCATEGORY:"allCategory",
+  SINGLECATEGORY:"singleCategory",
+
+  USER:"user",
+  CART:"usercart",
+  WISHLIST:"userwishlist"
+}
+
+
+export const invalidateCache = async({productAdded, orderAdded, userAdded, userUpdated, productUpdated, orderUpdated,})=>{
+  if(userAdded || userUpdated){
+    const key = `${CACHEKEYS.ALLUSER}`;
+    const exists = await redisClient.exists(key);
+    if(exists) await redisClient.del(key);
+  }
+  if(productAdded || productUpdated){
+    const key0 = `${CACHEKEYS.ALLPRODUCTS}`;
+    const exists0 = await redisClient.exists(key0);
+    if(exists0) await redisClient.del(key0);
+
+    const key1 = `${CACHEKEYS.MYPRODUCTS}`;
+    const exists1 = await redisClient.exists(key1);
+    if(exists1) await redisClient.del(key1);
+
+    const key2 = `${CACHEKEYS.LATESTPRODUCT}`;
+    const exists2 = await redisClient.exists(key2);
+    if(exists2) await redisClient.del(key2);
+
+    const key3 = `${CACHEKEYS.GETCATEGORYPRODUCT}`;
+    const exists3 = await redisClient.exists(key3);
+    if(exists3) await redisClient.del(key3);
+
+    const key4 = `${CACHEKEYS.SINGLEPRODUCT}`;
+    const exists4 = await redisClient.exists(key4);
+    if(exists4) await redisClient.del(key4);
+
+    const key5 = `${CACHEKEYS.ALLCATEGORY}`;
+    const exists5 = await redisClient.exists(key5);
+    if(exists5) await redisClient.del(key5);
+  }
+
+  if(orderAdded || orderUpdated){
+
+  }
+}
+
+
+
 export {connectDB, uploadOnCloudinary, deleteFromCloudinary}
+
+
+

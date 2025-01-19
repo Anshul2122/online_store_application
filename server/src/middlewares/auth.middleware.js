@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken"
 
 
 const isAuthenticated = TryCatch(async (req, res, next) => {
-    const token = req.cookies.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+  const token = req.cookies.accessToken || req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
         return next(new ErrorHandler("Unauthorized request", 401));

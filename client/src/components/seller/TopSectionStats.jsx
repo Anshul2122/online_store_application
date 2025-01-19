@@ -1,38 +1,44 @@
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 
-const statsData = [
-  {
-    title: "Total Products Added",
-    currentValue: 124,
-    previousValue: 110,
-    unit: "",
-  },
-  {
-    title: "Total Orders Received",
-    currentValue: 512,
-    previousValue: 478,
-    unit: "",
-  },
-  {
-    title: "Revenue Earned",
-    currentValue: 124000,
-    previousValue: 100000,
-    unit: "₹",
-  },
-  {
-    title: "Customer Rating",
-    currentValue: 4.5,
-    previousValue: 4.2,
-    unit: "/5",
-  },
-];
 
-const TopSectionStats = () => {
+
+const TopSectionStats = ({
+  orders,
+  products,
+  rating,
+}) => {
+  const statsData = [
+    {
+      title: "Total Products Added",
+      currentValue: products?.totalProducts || 0,
+      thismonth: products?.thisMonthProducts|| 1,
+      unit: "",
+      
+    },
+    {
+      title: "Total Orders Received",
+      currentValue: orders?.totalOrders,
+      thismonth: orders?.lastMonthOrders || 1,
+      unit: "",
+    },
+    {
+      title: "Revenue Earned",
+      currentValue: orders?.totalRevenue,
+      thismonth: orders?.totalRevenue,
+      unit: "₹",
+    },
+    {
+      title: "Customer Rating",
+      currentValue: 4.5,
+      thismonth: 1,
+      unit: "/5",
+    },
+  ];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
       {statsData.map((stat, index) => {
         const percentageChange =
-          ((stat.currentValue - stat.previousValue) / stat.previousValue) * 100;
+          ((stat.currentValue - stat.thismonth) / stat.thismonth) * 100;
         const isPositive = percentageChange >= 0;
 
         return (
@@ -46,18 +52,16 @@ const TopSectionStats = () => {
             </h3>
 
             {/* Current & Previous Values */}
-            <div className="flex items-baseline gap-4">
+            <div className="flex items-baseline gap-4 flex-col">
               <div className="text-xl font-bold text-black flex items-center">
                 {stat.unit === "₹" && <span className="mr-1">{stat.unit}</span>}
                 {stat.currentValue}
                 {stat.unit === "/5" && <span>{stat.unit}</span>}
               </div>
 
-              {stat.previousValue && (
+              {stat.thismonth && (
                 <div className="text-sm text-gray-400 flex items-center">
-                            (prev : { " "}
-            
-                  {stat.previousValue})
+                  ( this month: {stat.thismonth})
                 </div>
               )}
             </div>

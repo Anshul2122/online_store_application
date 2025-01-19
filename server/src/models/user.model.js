@@ -42,13 +42,17 @@ const UserSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: "default.jpg",
+      required:false,
+      default: "",
     },
     address: {
       street: { type: String },
       city: { type: String },
       state: { type: String },
       zip: { type: String },
+      locality: { type: String },
+      alternatPhone: { type: String },
+      landmark: { type: String }
     },
     wishlist: [
       {
@@ -105,6 +109,10 @@ const UserSchema = new mongoose.Schema(
           },
         ],
         total: Number,
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        }
       },
     ],
     adminOrders: [

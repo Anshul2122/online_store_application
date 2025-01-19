@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
 } from "../../helper/chart"; // Ensure the path is correct
+import { useDispatch, useSelector } from "react-redux";
 
 ChartJS.register(
   CategoryScale,
@@ -19,6 +20,7 @@ ChartJS.register(
 );
 
 const BarChart = () => {
+  const { isLoading, user, stats } = useSelector((store) => store.auth);
   const data = {
     labels: [
       "January",
@@ -36,11 +38,8 @@ const BarChart = () => {
     ],
     datasets: [
       {
-        label: "Sales",
-        data: [
-          5000, 7000, 8000, 6000, 9000, 6000, 7000, 7000, 7000, 8000, 6000,
-          4528, 4845,
-        ],
+        label: "Revneue",
+        data: stats.monthlyStats.map((stat)=>stat.revenue),
         backgroundColor: "rgba(75, 192, 192, 0.6)",
         borderWidth: 1,
       },

@@ -1,9 +1,18 @@
+
 import Product from "../models/product.model.js";
 import User from "../models/user.model.js";
 import { ErrorHandler } from "../utils/error.js";
-import { uploadOnCloudinary } from "../utils/features.js";
 import { TryCatch } from "./../utils/TryCatch.js";
 import jwt from "jsonwebtoken";
+
+import { redisClient } from './../server.js';
+import { invalidateCache } from "../utils/features.js";
+
+const CACHE_KEYS ={
+  USER:"user",
+  CART:"usercart",
+  WISHLIST:"userwishlist"
+}
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -39,19 +48,7 @@ const registerUser = TryCatch(async (req, res, next) => {
     return next(
       new ErrorHandler("Email or Phone Number already exists!!", 409)
     );
-  }
-
-  let avatar = "";
-
-  if (req.file) {
-    const image = await uploadOnCloudinary(req.file.path);
-    if (!image) {
-      return next(
-        new ErrorHandler("Error in image uploading to cloudinary", 500)
-      );
-      }
-      avatar = image.url;
-  }
+  }  
 
   const user = await User.create({
     firstName,
@@ -59,16 +56,20 @@ const registerUser = TryCatch(async (req, res, next) => {
     email,
     password,
     phoneNumber,
-    avatar,
   });
+  
+
 
   const createdUser = await User.findById(user._id).select(
-    "-password -refrehToken"
+    "-password -refreshToken"
   );
 
   if (!createdUser) {
     return next(new ErrorHandler("User registration failed!!"));
   }
+
+  await redisClient.set(`${CACHE_KEYS.USER}${createdUser._id}`, JSON.stringify(createdUser))
+  invalidateCache(userAdded);
 
   return res.status(201).json({
     success: true,
@@ -100,6 +101,8 @@ const loginUser = TryCatch(async (req, res, next) => {
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
+
+  await redisClient.set(`${CACHE_KEYS.USER}${loggedInUser._id}`, JSON.stringify(loggedInUser));
 
   const options = {
     httpOnly: true,
@@ -174,20 +177,29 @@ const refreshAccessToken = TryCatch(async (req, res, next) => {
 });
 
 const getCurrentUser = TryCatch(async (req, res, next) => {
+
+  let cachedUser;
+  if(redisClient.exists(`${CACHE_KEYS.USER}${req.user._id}`)){
+    cachedUser = await redisClient.get(`${CACHE_KEYS.USER}${req.user._id}`);
+  }
+  if (cachedUser) {
+    return res.status(200).json({
+      success: true,
+      message: "user fetched successfully!!",
+      user: JSON.parse(cachedUser)
+    });
+  }
   const user = req.user;
   if (!user) {
     return next(new ErrorHandler("Unauthorized request, login first", 401));
   }
+  await redisClient.set(`${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
   return res
     .status(200)
     .json({ success: true, message: "user fetched sucessfully!!", user });
 });
 
 const updateUser = TryCatch(async (req, res, next) => {
-  if (!req.user) {
-    return next(new ErrorHandler("Unauthorized request, login first", 401));
-  }
-
   const user = await User.findById(req.user?._id);
   if (!user) {
     return next(
@@ -195,17 +207,6 @@ const updateUser = TryCatch(async (req, res, next) => {
     );
   }
   const { firstName, lastName, email, phoneNumber, gender, address } = req.body;
-  
-  let avatar = "";
-  if (req.file) {
-    const image = await uploadOnCloudinary(req.file.path);
-    if (!image) {
-      return next(
-        new ErrorHandler("Error in image uploading to cloudinary", 500)
-        );
-      }
-      avatar = image.url;
-  }
 
   if (firstName) {
     user.firstName = firstName;
@@ -222,61 +223,56 @@ const updateUser = TryCatch(async (req, res, next) => {
   if (gender) {
     user.gender = gender;
   }
-  if (avatar) {
-    user.avatar = avatar;
-  }
   if (address) {
     user.address = address;
   }
+
   await user.save();
+  await redisClient.set(`${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
   
   return res
     .status(200)
     .json({ success: true, message: "User updated successfully!!", user });
 });
 
-const deleteUser = TryCatch(async (req, res, next) => {
-    if (!req.user) {
-    return next(new ErrorHandler("Unauthorized request, login first", 401));
-    }
-    const id = req.user._id;
-    const user = await User.findByIdAndDelete(id);
-    if (!user) {
-        return next(new ErrorHandler("User not found", 404));
-    }
-
-    return res.status(200).clearCookie('accessToken').clearCookie('refreshToken').json({ success: true, message: "user account deleted" });
-
-})
-
 const addToWishlist = TryCatch(async (req, res, next) => {
   const productId = req.params.id;
-  const userId = req.user.id;
+  const userId = req.user._id;
+  
   const user = await User.findById(userId);
   const product = await Product.findById(productId);
-  if (!user) {
-    return next(new ErrorHandler("User not found", 404));
-  }
+
   if (!product) {
     return next(new ErrorHandler("product not found", 404));
   }
+  user.cart.forEach((item) => {
+    if (item._id.toString() === productId.toString()) {
+      user.cart.remove(item);
+    }
+  });
 
   if (user.wishlist.includes(productId)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Product already in wishlist" });
-  }
+    return res.status(200).json({
+    success: true,
+    message: "product already exists in wishlist",
+    user,
+  })
+}
+  
   user.wishlist.push(productId);
   await user.save();
-  const wishlist = user.wishlist;
+  await redisClient.set(`${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
   return res
     .status(200)
-    .json({ success: true, message: "product added to wishlist", wishlist});
+    .json({ success: true, message: "product added to wishlist", user});
 });
 
 const addToCart = TryCatch(async (req, res, next) => {
   const productId = req.params.id;
-  const userId = req.user.id;
+  const userId = req.user._id;
+  
   const user = await User.findById(userId);
   const product = await Product.findById(productId);
   if (!user) {
@@ -285,17 +281,27 @@ const addToCart = TryCatch(async (req, res, next) => {
   if (!product) {
     return next(new ErrorHandler("product not found", 404));
   }
-  if (user.cart.includes(productId)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Product already in Cart" });
+
+  const productExists = user.cart.find(
+    (item) => item._id.toString() === productId.toString()
+    );
+    let exists = true;
+
+    if (productExists) {
+    exists = true;
+    productExists.quantity += 1;
+  } else {
+    // If the product doesn't exist, add it to the cart
+      user.cart.push({ _id: productId, quantity: 1 });
+      exists = false;
   }
-  user.cart.push(productId);
+
   await user.save();
-  const cartItems = user.cart;
+  await redisClient.set(`${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
   return res
     .status(200)
-    .json({ success: true, message: "product added to Cart", cartItems });
+    .json({ success: true, message: "product added to Cart", user, exists });
 });
 
 const removeFromWishlist = TryCatch(async (req, res, next) => {
@@ -306,17 +312,23 @@ const removeFromWishlist = TryCatch(async (req, res, next) => {
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
-  if (!user.wishlist.includes(productId)) {
+
+  const initialLength = user.wishlist.length;
+
+  user.wishlist = user.wishlist.filter((item) => item.toString() !== productId);
+
+  if (user.wishlist.length === initialLength) {
     return res
-      .status(400)
-      .json({ success: false, message: "Product not in wishlist" });
+     .status(400)
+     .json({ success: false, message: "Product not in wishlist", user });
   }
-  user.wishlist = user.wishlist.filter((id) => id.toString() !== productId);
+  
   await user.save();
-  const wishlistItems = user.wishlist;
+  await redisClient.set( `${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
   return res
     .status(200)
-    .json({ success: true, message: "product removed from wishlist", wishlistItems });
+    .json({ success: true, message: "product removed from wishlist", user });
 });
 
 const removeFromCart = TryCatch(async (req, res, next) => {
@@ -326,60 +338,155 @@ const removeFromCart = TryCatch(async (req, res, next) => {
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
-  if (!user.cart.includes(productId)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Product not in cart" });
-  }
-  user.cart = user.cart.filter((id) => id.toString() !== productId);
+  let removed = false 
+  user.cart.forEach((item) => {
+    if (item.id.toString() === productId.toString()) {
+      item.quantity -= 1
+
+      if (item.quantity == 0) {
+        user.cart.remove(item);
+        removed = true;
+      }
+    }
+  });  
+
+  await redisClient.set(`${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
+
   await user.save();
-  const cartItems = user.cart;
   return res
     .status(200)
-    .json({ success: true, message: "product removed from cart", cartItems });
+    .json({ success: true, message:"product removed from cart", user, removed });
 });
 
 const getWishListProduct = TryCatch(async (req, res, next) => {
+  let cachedWishlist;
+  const wishlistKey = `${CACHE_KEYS.WISHLIST}${req.user._id}`;
+  const exists = await redisClient.exists(wishlistKey);
+
+  if (exists) {
+    cachedWishlist = await redisClient.get(wishlistKey);
+
+    return res.status(200).json({
+      success: true,
+      message: "Products in wishlist fetched successfully",
+      wishlistProducts: JSON.parse(cachedWishlist), // Make sure it was stored as JSON
+      total: JSON.parse(cachedWishlist).length,
+    });
+  }
+
+  // If no cache, fetch from database
   const userId = req.user.id;
+  const user = await User.findById(userId).select("-password").populate("wishlist");
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  // Cache the wishlist for future requests
+  await redisClient.set(wishlistKey, JSON.stringify(user.wishlist));
+
+  // Return the wishlist data
+  return res.status(200).json({
+    success: true,
+    message: "Products in wishlist fetched successfully",
+    wishlistProducts: user.wishlist,
+    total: user.wishlist.length,
+  });
+});
+
+
+const getCartProduct = TryCatch(async (req, res, next) => {
+  let cacheCartProduct;
+  const CartKey = `${CACHE_KEYS.CART}${req.user._id}`;
+  const exists = await redisClient.exists(CartKey);
+  if (exists) {
+    cacheCartProduct = await redisClient.get(CartKey);
+
+    return res.status(200).json({
+      success: true,
+      message: "Products in Cart fetched successfully",
+      wishlistProducts: JSON.parse(cacheCartProduct),
+      total: JSON.parse(cacheCartProduct).length,
+    });
+  }
+  const userId = req.user._id;
   const user = await User.findById(userId).select("-password");
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
+  const cartProducts = await Promise.all(
+    user.cart.map(async (item) => {
+      const product = await Product.findById(item._id).select(
+        "name description images category brand sellingPrice originalPrice stock"
+      );
+      return {
+        quantity: item.quantity,
+        product,
+      };
+    })
+  );
+  await redisClient.set(CartKey, JSON.stringify(cartProducts));
   
-  let wishlistProducts= [];
-  user.wishlist.forEach(product => {
-    wishlistProducts.push(product);
+  return res.status(200).json({
+    success: true,
+    message: "products fetched successfully",
+    cartProducts,
+    total: cartProducts.length, // Total number of cart items
   });
-  return res
-    .status(200)
-    .json({
-      success: true,
-      message: "products in wishlist fetched successfully",
-      wishlistProducts,
-    });
 });
 
-const getCartProduct = TryCatch(async (req, res, next) => {
+const removeProductFromCart = TryCatch(async (req, res, next) => {
+  console.log("req user", req.user)
+  console.log(req.params)
+  const productId = req.params.id;
+  console.log("productId : ",productId);
+  
   const userId = req.user.id;
   const user = await User.findById(userId);
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
-  let cartProducts = [];
-
-  user.cart.forEach(product => {
-    cartProducts.push(product);
+  const product = await Product.findById(productId);
+  if (!product) {
+    return next(new ErrorHandler("Product not found", 404));
+  }
+  user.cart.forEach((item) => {
+    if (item.id.toString() === productId.toString()) {
+        user.cart.remove(item);
+    }
   });
-  
+  await user.save();
+  await redisClient.set(`${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
   return res
     .status(200)
     .json({
       success: true,
-      message: "products in cart fetched successfully",
-      cartProducts,
+      message: "product removed from cart",
+      user,
     });
-});
+})
 
+const moveTowishlistFromCart = TryCatch(async (req, res, next) => {
+
+  const productId = req.params.id;
+  const userId = req.user._id;
+  
+  const user = await User.findById(userId);
+  const product = await Product.findById(productId);
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+  if (!product) {
+    return next(new ErrorHandler("product not found", 404));
+  }
+  user.cart.pull(productId);
+  user.wishlist.push(productId);
+  await user.save();
+  await redisClient.set(`${CACHE_KEYS.USER}${user._id}`, JSON.stringify(user));
+  invalidateCache(userUpdated);
+  return res.json({message:"moved to wishlist", success:true, user});
+})
 
 export {
   registerUser,
@@ -388,11 +495,12 @@ export {
   logoutUser,
   getCurrentUser,
   updateUser,
-  deleteUser,
   addToCart,
   addToWishlist,
   removeFromCart,
   removeFromWishlist,
   getCartProduct,
   getWishListProduct,
+  removeProductFromCart,
+  moveTowishlistFromCart
 };

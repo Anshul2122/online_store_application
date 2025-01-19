@@ -1,12 +1,88 @@
-import MyOrders from "../MyOrders";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 
 const SellerOrder = () => {
+  const navigate = useNavigate();
+  const { user} = useSelector(store => store.auth);
+
+  const invoices = user.soldOrders;
+  console.log("Invoices", invoices);
+  console.log(user.soldOrders)
+  const calculateQuantity = () => {
+    let totalQuantities = 0;
+    invoices.forEach((invoice) => {
+      invoice.items.forEach((product) => {
+        totalQuantities += product.quantity;
+      });
+    });
+    return totalQuantities;
+  };
+
+  const totalEarnings = () => {
+    let totalEarnings = 0;
+    invoices.forEach((invoice) => {
+      invoice.items.forEach((product) => {
+        totalEarnings += product.price - product.price * 0.05;
+      });
+    });
+    return totalEarnings.toFixed(2);
+  }
+  let i = 1;
+
   return (
-    <div className="p-6">
-      <MyOrders heading={"Order Received"} />
+    <div className="p-6 bg-white">
+      <Table>
+        <TableCaption>A list of your recent invoices.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">S.No</TableHead>
+            <TableHead className="text-center">
+              Quantity of Items with Name
+            </TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {invoices.map((invoice) => (
+            <TableRow key={invoice.S_No}>
+              <TableCell className="font-medium">{i++}</TableCell>
+              <TableCell className="text-center">
+                {invoice.items.map((item, index) => (
+                  <div key={index}>
+                    {item.quantity} x {item.name}
+                  </div>
+                ))}
+              </TableCell>
+              <TableCell className="text-right">
+                {invoice.items.map((item, index) => (
+                  <div key={index}>₹ {(item.price - item.price * 0.05)*item.quantity}</div>
+                ))}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell colSpan={1}>Total</TableCell>
+            <TableCell className="text-center">{calculateQuantity()} items</TableCell>
+            <TableCell className="text-right">₹ {totalEarnings()}</TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
     </div>
   );
-}
+};
 
-export default SellerOrder
+export default SellerOrder;
+

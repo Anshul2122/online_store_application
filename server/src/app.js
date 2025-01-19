@@ -8,7 +8,10 @@ import Stripe from "stripe";
 
 import { errorHandler } from "./utils/errorHandler.js";
 
+
+export const stripe = new Stripe(process.env.STRIPE_API_KEY);
 const app = express();
+
 
 app.use(
   cors({
@@ -23,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-export const stripe = new Stripe(process.env.STRIPE_API_KEY);
+
 
 app.use((req, res, next) => {
   console.log(
@@ -46,6 +49,7 @@ import AdminRoute from "./routes/admin.routes.js"
 import OrderRoute from "./routes/order.routes.js"
 import ProductsRoute from "./routes/product.routes.js"
 
+
 // routes declaration
 
 app.use('/api/v1/users', UserRoute);
@@ -54,6 +58,6 @@ app.use('/api/v1/admin', AdminRoute);
 app.use("/api/v1/order", OrderRoute);
 app.use('/api/v1/product', ProductsRoute);
 
-app.use(errorHandler)
+// app.use(errorHandler)
 
 export { app };

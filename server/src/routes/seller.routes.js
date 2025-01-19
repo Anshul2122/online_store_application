@@ -18,11 +18,12 @@ const router = Router();
 
 router.route("/register").post(isAuthenticated, authorizeRoles("customer"), registerSeller);
 router.route("/add-product").post(isAuthenticated, authorizeRoles("seller"), upload.array("images", 5), addProduct);
-router.route("/product/:id")
-  .get( getProductInfo)
-  .put(isAuthenticated, authorizeRoles("seller", "admin"), updateProductData)
+router
+  .route("/product/:id")
+  .get(getProductInfo)
+  .put( isAuthenticated, authorizeRoles("seller", "admin"), upload.array("images", 5), updateProductData)
   .delete(isAuthenticated, authorizeRoles("seller", "admin"), deleteProduct);
-router.route("/my-allProducts").get(isAuthenticated, authorizeRoles("seller", "admin"), getAllSellerProducts);
+router.route("/my-allProducts").get(isAuthenticated, authorizeRoles("seller"), getAllSellerProducts);
 
 router.route("/my-stats").get(isAuthenticated, authorizeRoles("seller"), sellerStats);
 

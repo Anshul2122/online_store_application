@@ -1,54 +1,72 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { setLoading } from "@/redux/slices/authSlice";
+import { USER_API } from "@/utils/api-routes/contant";
+import axios from "axios";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-
-
+const api_key = import.meta.env.VITE_BACKEND_URL;
 const Signup = () => {
-    const loading = false;
 
-    const [input, setInput] = useState({
-        name: "",
-        email: "",
-        password: "",
-        phone: "",
-    });
+  const [input, setInput] = useState({
+    firstName: "",
+    lastName:"",
+    email: "",
+    password: "",
+    phoneNumber: "",
+  });
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { isLoading, user } = useSelector((store) => store.auth);
 
-    const navigate = useNavigate();
+  const changeEventHandler = (e) => {
+    setInput({ ...input, [e.target.name]: e.target.value });
+  };
+  const submitHandler = async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+
+    formData.append("firstName", input.firstName);
+    formData.append("lastName", input.lastName);
+    formData.append("email", input.email);
+    formData.append("password", input.password);
+    formData.append("phoneNumber", input.phoneNumber);
+    // Debugging formData
+    try {
+      dispatch(setLoading(true));
+      
+      const res = await axios.post(`${api_key}/${USER_API}/register`, formData, {
+        withCredentials: true,
+      });
+      console.log("response: ", res);
+      if (res.data.success) {
+        navigate('/auth/login');
+        toast.success(res.data.message);
+      }
+    } catch (error) {
+      console.log("error: ", error);
+      error?.res?.data?.message || "An unexpected error occurred!";
+      toast.error("Registration failed! Please try again.");
+    } finally {
+      dispatch(setLoading(false));
+    }
 
     
-    const changeEventHandler = (e) => {
-        setInput({...input, [e.target.name]: e.target.value});
-    };
-    const submitHandler = async(e) => {
-        e.preventDefault();
+  };
 
-        const formData = new FormData();
+  useEffect(() => {
+    if (user) {
+      console.log(user);
+      navigate("/auth/login");
+    }
+  }, [user]);
 
-        formData.append('name', input.name);
-        formData.append("email", input.email);
-        formData.append("password", input.password);
-        formData.append("phoneNumber", input.phoneNumber);
-
-        console.log(input);
-        try {
-            let res;
-
-
-            if (res.data.success) {
-                navigate('/');
-                toast.success("Success!");
-            }
-        } catch (error) {
-            console.log("error: ",error);
-            
-        }
-    };
-
-    return (
+  return (
     <div className="w-full">
       <div className="flex items-center justify-center max-w-7xl max-auto">
         <form
@@ -60,8 +78,15 @@ const Signup = () => {
             <Label>Name</Label>
             <Input
               type="text"
-              placeholder="Enter your name"
-              name="name"
+              placeholder="Enter your first name"
+              name="firstName"
+              onChange={changeEventHandler}
+            />
+            <Label>Last Name</Label>
+            <Input
+              type="text"
+              placeholder="Enter your last name"
+              name="lastName"
               onChange={changeEventHandler}
             />
             <Label>Email</Label>
@@ -86,7 +111,7 @@ const Signup = () => {
               onChange={changeEventHandler}
             />
           </div>
-          {loading ? (
+          {isLoading ? (
             <Button>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               loading...
@@ -107,6 +132,6 @@ const Signup = () => {
       </div>
     </div>
   );
-}
+};
 
-export default Signup
+export default Signup;

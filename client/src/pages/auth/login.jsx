@@ -1,20 +1,33 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { setLoading, setUser } from "@/redux/slices/authSlice";
+import { USER_API } from "@/utils/api-routes/contant";
+import axios from "axios";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 
+const api_key = import.meta.env.VITE_BACKEND_URL;
+
+
 const Login = () => {
-  const loading = false;
 
   const [input, setInput] = useState({
     email: "",
     password: "",
   });
-
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { isLoading, user } = useSelector(store => store.auth);
+  if (user) {
+    navigate("/");
+    return null;
+  }
+  
+
 
   const changeEventHandler = (e) => {
     setInput({ ...input, [e.target.name]: e.target.value });
@@ -26,21 +39,31 @@ const Login = () => {
     const formData = new FormData();
     formData.append("email", input.email);
     formData.append("password", input.password);
-
-    console.log(input);
-
     try {
-      let res; 
+      dispatch(setLoading(true));
+      
+      let res = await axios.post(`${api_key}/${USER_API}/login`, formData, {
+        headers: {
+          "Content-Type": "application/json"
+        }, withCredentials: true
+      }
+      ) 
 
       if (res?.data?.success) {
+        dispatch(setUser(res.data.user));
         navigate("/");
-        toast.success("Success!");
+        toast.success("welcome back!");
       }
     } catch (error) {
       console.log("error: ", error);
       toast.error("Login failed!");
+    } finally {
+      dispatch(setLoading(false));
     }
   };
+
+  useEffect(() => {
+  }, [user]);
 
   return (
     <div className="w-full">
@@ -66,7 +89,7 @@ const Login = () => {
               onChange={changeEventHandler}
             />
           </div>
-          {loading ? (
+          {isLoading ? (
             <Button>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading...

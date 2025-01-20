@@ -239,7 +239,7 @@ const newOrder = TryCatch(async (req, res, next) => {
     await admin.save();
   }
 
-  await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order))
+  // await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order))
   
   invalidateCache(userUpdated, orderAdded, productUpdated);
   return res.status(201).json({
@@ -280,8 +280,7 @@ const confrimOrder = TryCatch(async (req, res, next) => {
       await product.save();
     }
   })
-  await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order))
-  invalidateCache(userUpdated, orderAdded, productUpdated);
+  // await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order))
 
   return res.status(200).json({
     success: true,
@@ -291,41 +290,41 @@ const confrimOrder = TryCatch(async (req, res, next) => {
 })
 
 const getMyOrders = TryCatch(async (req, res, next) => { 
-  let cachedMyOrders;
-  const myOrderKey = `${CACHE_KEY.MYORDER}${req.user._id}`;
+  // let cachedMyOrders;
+  // const myOrderKey = `${CACHE_KEY.MYORDER}${req.user._id}`;
 
-  const exists = await redisClient.exists(myOrderKey);
-  console.log("exists", exists)
-  const data = await redisClient.get(myOrderKey);
-  console.log("data", JSON.parse(data));
-  if(exists){
-    cachedMyOrders = await redisClient.get(myOrderKey);
-    cachedMyOrders = JSON.parse(cachedMyOrders);
-    return res.status(200).json({success:true, message:"",orders:cachedMyOrders})
-  }
+  // const exists = await redisClient.exists(myOrderKey);
+  // console.log("exists", exists)
+  // const data = await redisClient.get(myOrderKey);
+  // console.log("data", JSON.parse(data));
+  // if(exists){
+  //   cachedMyOrders = await redisClient.get(myOrderKey);
+  //   cachedMyOrders = JSON.parse(cachedMyOrders);
+  //   return res.status(200).json({success:true, message:"",orders:cachedMyOrders})
+  // }
   const orders = await Order.find({ "customer.email": req.user.email });
   if (!orders) {
     return next(new ErrorHandler("No orders found for this customer", 404));
   }
-  await redisClient.set(`${myOrderKey}`, JSON.stringify(orders));
+  // await redisClient.set(`${myOrderKey}`, JSON.stringify(orders));
   return res
    .status(200)
    .json({ success: true, message: "Orders fetched successfully", orders });
 })
 
 const getOrderById = TryCatch(async (req, res, next) => {
-  let cachedOrderById;
-  const orderIdKey = `${CACHE_KEY.ORDER}${req.params.id}`;
-  const exists = redisClient.exists(orderIdKey);
-  if(exists){
-    cachedOrderById = await redisClient.get(orderIdKey);
-    return res.status(200).json({success:true, message:"",cachedOrderById})
-  }
+  // let cachedOrderById;
+  // const orderIdKey = `${CACHE_KEY.ORDER}${req.params.id}`;
+  // const exists = redisClient.exists(orderIdKey);
+  // if(exists){
+  //   cachedOrderById = await redisClient.get(orderIdKey);
+  //   return res.status(200).json({success:true, message:"",cachedOrderById})
+  // }
   const order = await Order.findById(req.params.id);
   if (!order) {
     return next(new ErrorHandler("Order not found", 404));
   }
-  await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order))
+  // await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order))
   return res
     .status(200)
     .json({ success: true, message: "Order fetched successfully", order });
@@ -349,8 +348,7 @@ const updateOrderStatus = TryCatch(async (req, res, next) => {
     })
     .sort({ createdAt: -1 });
 
-    await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order)).
-    invalidateCache(userUpdated, orderAdded, productUpdated);
+    // await redisClient.set(`${CACHE_KEY.ORDER}${order._id}`, JSON.stringify(order))
 
   return res
     .status(200)
@@ -358,14 +356,14 @@ const updateOrderStatus = TryCatch(async (req, res, next) => {
 });
 
 const getAllOrders = TryCatch(async (req, res, next) => {
-  let cachedAllOrders;
+  // let cachedAllOrders;
   const allOrdersKey = `${CACHE_KEY.ALLORDERS}`;
-  const exists = redisClient.exists(allOrdersKey);
-  if(exists){
-    cachedAllOrders = await redisClient.get(allOrdersKey);
-    cachedAllOrders = JSON.parse(cachedAllOrders);
-    return res.status(200).json({success:true, message:"",orders:cachedAllOrders})
-  }
+  // const exists = redisClient.exists(allOrdersKey);
+  // if(exists){
+  //   cachedAllOrders = await redisClient.get(allOrdersKey);
+  //   cachedAllOrders = JSON.parse(cachedAllOrders);
+  //   return res.status(200).json({success:true, message:"",orders:cachedAllOrders})
+  // }
   const orders = await Order.find()
     .populate({
       path: "orderItems.productId",
@@ -393,18 +391,18 @@ const getAllOrders = TryCatch(async (req, res, next) => {
 const getUserOrderByEmailByAdmin = TryCatch(async (req, res, next) => {
   const email = req.params.email;
   const user = await User.findOne({ email: email });
-  let cachedOrderByEmail;
-  const orderByEmailKey = `${CACHE_KEY.MYORDER}${user._id}`;
-  const exists = redisClient.exists(orderByEmailKey);
-  if(exists){
-    cachedOrderByEmail = await redisClient.get(orderByEmailKey);
-    return res.status(200).json({success:true, message:"",cachedOrderByEmail})
-  }
+  // let cachedOrderByEmail;
+  // const orderByEmailKey = `${CACHE_KEY.MYORDER}${user._id}`;
+  // const exists = redisClient.exists(orderByEmailKey);
+  // if(exists){
+  //   cachedOrderByEmail = await redisClient.get(orderByEmailKey);
+  //   return res.status(200).json({success:true, message:"",cachedOrderByEmail})
+  // }
   const order = await Order.findOne({ "customer.email": email });
   if (!order) {
     return next(new ErrorHandler("Order not found for this customer", 404));
   }
-  await redisClient.set(`${orderByEmailKey}`, JSON.stringify(order))
+  // await redisClient.set(`${orderByEmailKey}`, JSON.stringify(order))
   return res.status(200).json({
     success: true,
     message: "Order fetched successfully",
@@ -415,13 +413,13 @@ const getUserOrderByEmailByAdmin = TryCatch(async (req, res, next) => {
 const getOrderByStatus = TryCatch(async (req, res, next) => {
   const {status} = req.query;
 
-  let cachedOrderByStatus;
-  const orderByStatusKey = `${CACHE_KEY.ORDERBYSTATUS}${status}`;
-  const exists = redisClient.exists(orderByStatusKey);
-  if(exists){
-    cachedOrderByStatus = await redisClient.get(orderByStatusKey);
-    return res.status(200).json({success:true, message:"",cachedOrderByStatus})
-  }
+  // let cachedOrderByStatus;
+  // const orderByStatusKey = `${CACHE_KEY.ORDERBYSTATUS}${status}`;
+  // const exists = redisClient.exists(orderByStatusKey);
+  // if(exists){
+  //   cachedOrderByStatus = await redisClient.get(orderByStatusKey);
+  //   return res.status(200).json({success:true, message:"",cachedOrderByStatus})
+  // }
   const orders = await Order.find({ status: status })
     .populate({
       path: "orderItems.productId",
@@ -435,25 +433,27 @@ const getOrderByStatus = TryCatch(async (req, res, next) => {
   if (!orders) {
     return next(new ErrorHandler("No orders found with this status", 404));
   }
-  await redisClient.set(`${orderByStatusKey}`, JSON.stringify(orders))
+  // await redisClient.set(`${orderByStatusKey}`, JSON.stringify(orders))
   return res
    .status(200)
    .json({ success: true, message: "Orders fetched successfully",count:orders.length, orders });
 })
 
+
 const getSellerOrder = TryCatch(async (req, res, next) => {
-  const sellerId = req.params.sellerId;
-  let cachedSoldOrders;
-  const soldOrderKey = `${CACHE_KEY.SELLERORDERS}${sellerId}`
-  const exists = redisClient.exists(soldOrderKey);
-  if (exists) {
-    cachedSoldOrders = JSON.parse(await redisClient.get(soldOrderKey));
-    return res.status(200).json({ success: true, message: "Sold orders fetched from cache", soldOrdes: cachedSoldOrders });
-  }
+  const sellerId = req.user._id;
+  // let cachedSoldOrders;
+  // const soldOrderKey = `${CACHE_KEY.SELLERORDERS}${sellerId}`
+  // const exists = redisClient.exists(soldOrderKey);
+  // if (exists) {
+  //   cachedSoldOrders = JSON.parse(await redisClient.get(soldOrderKey));
+  //   return res.status(200).json({ success: true, message: "Sold orders fetched from cache", soldOrdes: cachedSoldOrders });
+  // }
   const seller = await User.findById(sellerId);
-  const soldOrdes = seller.soldOrders;
-  await redisClient.set(`${soldOrderKey}`, JSON.stringify(soldOrdes));
-  return res.status(200).json({ success: true, message: "", soldOrdes})
+  const soldOrders = seller.soldOrders;
+  console.log(soldOrders)
+  // await redisClient.set(`${soldOrderKey}`, JSON.stringify(soldOrdes));
+  return res.status(200).json({ success: true, message: "", soldOrders})
 })
 
 

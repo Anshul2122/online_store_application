@@ -13,6 +13,7 @@ import {
   getOrderByStatus,
   getUserOrderByEmailByAdmin,
   confrimOrder,
+  getSellerOrder
 } from "../controllers/order.controller.js";
 
 const router = Router();
@@ -24,6 +25,7 @@ router.route("/order/:id").get(isAuthenticated, getOrderById).put(isAuthenticate
 router.route("/all-orders").get(isAuthenticated, authorizeRoles("admin"), getAllOrders)
 router.route("/all/order-status").get(isAuthenticated, authorizeRoles("admin"), getOrderByStatus);
 router.route("/all/user-orders/:email").get(isAuthenticated, authorizeRoles("admin"), getUserOrderByEmailByAdmin)
+router.route("/getSellerOrder").get(isAuthenticated, authorizeRoles("seller"), getSellerOrder)
 
 
 

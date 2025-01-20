@@ -11,12 +11,38 @@ import {
 
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { setLoading } from "@/redux/slices/authSlice";
+import axios from "axios";
+import { api_key, ORDER_API } from "@/utils/api-routes/contant";
+import { setSoldOrders } from "@/redux/slices/orderSlice";
+import { useEffect } from "react";
 
 const SellerOrder = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user} = useSelector(store => store.auth);
+  const {soldOrder} = useSelector(store => store.orders);
 
-  const invoices = user.soldOrders;
+  const fetchSellerOrder = async()=>{
+    dispatch(setLoading(true));
+    try {
+      const res = await axios.get(`${api_key}/${ORDER_API}/getSellerOrder` , {withCredentials: true});
+      console.log(res.data);
+      if(res.data.success){
+        dispatch(setSoldOrders(res.data.soldOrders));
+      }
+    } catch (error) {
+      
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }
+
+  useEffect(()=>{
+    fetchSellerOrder();
+  },[])
+
+  const invoices =soldOrder;
   console.log("Invoices", invoices);
   console.log(user.soldOrders)
   const calculateQuantity = () => {

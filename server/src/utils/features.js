@@ -57,13 +57,8 @@ const deleteFromCloudinary = async (cloudinaryFilePath) => {
 
 const CACHEKEYS ={
   ALLUSER:"allUser",
-  USER:"user",
-  COUPON:"createCoupon",
-  ALLCOUPON:"allCoupon",
 
-  ORDER:"order",
   MYORDER:"myorder",
-  ORDERBYID:"orderID",
   ALLORDERS:"allorders",
   ORDERBYSTATUS:"orderStatus",
   SELLERORDERS:"sellerOrder",
@@ -83,12 +78,13 @@ const CACHEKEYS ={
 }
 
 
-export const invalidateCache = async({productAdded, orderAdded, userAdded, userUpdated, productUpdated, orderUpdated,})=>{
+export const invalidateCache = async({productAdded, userAdded, userUpdated, productUpdated})=>{
   if(userAdded || userUpdated){
     const key = `${CACHEKEYS.ALLUSER}`;
     const exists = await redisClient.exists(key);
     if(exists) await redisClient.del(key);
   }
+
   if(productAdded || productUpdated){
     const key0 = `${CACHEKEYS.ALLPRODUCTS}`;
     const exists0 = await redisClient.exists(key0);
@@ -113,10 +109,6 @@ export const invalidateCache = async({productAdded, orderAdded, userAdded, userU
     const key5 = `${CACHEKEYS.ALLCATEGORY}`;
     const exists5 = await redisClient.exists(key5);
     if(exists5) await redisClient.del(key5);
-  }
-
-  if(orderAdded || orderUpdated){
-
   }
 }
 

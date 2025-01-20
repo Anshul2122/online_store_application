@@ -1,12 +1,12 @@
-import DeliveryAddress from "@/components/DeliveryAddress"
-import OrderDetail from "@/components/OrderDetail"
+
 import SellerOrderDetails from "@/components/seller/SellerOrderDetails";
 import { Button } from "@/components/ui/button";
-import { setCurrOrder, setLoading } from "@/redux/slices/authSlice";
+import { setLoading } from "@/redux/slices/authSlice";
+import { setCurrOrder } from "@/redux/slices/orderSlice";
 import { api_key, ORDER_API } from "@/utils/api-routes/contant";
 import axios from "axios";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
@@ -44,7 +44,8 @@ const user = {
 const OrderDetails = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { isLoading, user, currOrder } = useSelector(store => store.auth);
+  const { isLoading, user } = useSelector(store => store.auth);
+  const {currOrder} = useSelector(store => store.orders)
   
 
 

@@ -10,6 +10,7 @@ const orderSlice = createSlice({
     sellingOrder:[],
     isLoading:false,
     error: null,
+    currOrder:null,
   },
   reducers: {
     setAllOrders(state, action) {
@@ -30,6 +31,9 @@ const orderSlice = createSlice({
     setSellingOrders(state, action){
       state.sellingOrder = action.payload;
     },
+    setCurrOrder(state, action){
+      state.currOrder = action.payload;
+    }
   },
 });
 
@@ -40,5 +44,6 @@ export const {
   setSoldOrders,  
   setError, 
   setSellingOrders,
+  setCurrOrder
 } = orderSlice.actions;
 export default orderSlice.reducer;

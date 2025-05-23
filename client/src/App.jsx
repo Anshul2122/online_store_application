@@ -64,15 +64,9 @@ function App() {
               />
             </Route>
               <Route path="order/success/:id" element={<OrderSuccess />} />
-              
-               {/* 
-              success_url: `$${process.env.CORS_ORIGIN}/order/success?session_id={CHECKOUT_SESSION_ID}&order_id=${order._id}`,
-              cancel_url: `$${process.env.CORS_ORIGIN}/order/cancel?order_id=${order._id}`, */}
-              
               <Route path="admin-home" element={<Admin_Home />} />
             </Route>
             <Route path='/' element={<ProductLayout/>}>
-
             </Route>
           </Routes>
         </Suspense>
